@@ -1,0 +1,338 @@
+---
+title: "Storm Data Analysis"
+author: Xia Cui
+output:
+    html_document:
+        keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Synopsis 
+
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+The dataset in this project is obtained from the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. The events in the database start in the year 1950 and end in November 2011. 
+
+The original dataset contains 902297 rows and 37 columns. The preprocessing of the data reduced the dataset to contain only columns that are key to addressing the central questions in this report: 
+
+1. Which types of events are the most harmful to public health? 
+
+2. Which types of events are the most damaging to the economy.  
+
+
+From the exploratory analysis of the reduced dataset, we found out that tornado is the most harmful event to public health, as measured by fatalities and injuries, and it affects certain states more severely than others. 
+
+
+In terms of economic damage, flood caused the most property damange, whereas drought caused the most crop damage. Below shows the process of arriving at such conclusions. 
+
+
+### 1. Downloading the packages needed
+
+```{r download packages, results = 'hide'}
+library(downloader)
+library(dplyr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+```
+
+
+### 2. Loading and preprocessing the raw data
+
+**Downloading the data**
+
+
+```{r download data from link to folder}
+
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+
+setwd("./Documents")
+
+download(url, "./Rprogramming/storm_data/storm_data.csv.bz2", mode = "wb")
+
+```
+
+
+**Loading data into R and checking the first 6 columns**
+
+```{r load the data}
+storm_data <- read.csv('./Documents/Rprogramming/storm_data/storm_data.csv.bz2')
+head(storm_data)
+```
+
+**Check the dimensions of the dataset.** 
+
+```{r}
+dim(storm_data)
+```
+
+
+**Reducing the dataset**
+
+Given the goal of this report is to find out which types of events are the most harmful to population health, as well as to the economy, we will reduce the dataset to include only those that are relevant to the tasks at hand. 
+
+
+```{r}
+storm_data_new <- storm_data %>% 
+    select(STATE, BGN_DATE, EVTYPE, FATALITIES,INJURIES, PROPDMG, 
+           PROPDMGEXP, CROPDMG, CROPDMGEXP)
+```
+
+
+**Using the summary function to check the data**
+
+
+```{r check the summary data}
+summary(storm_data_new)
+``` 
+
+
+
+**First, let's change the date column to *date* type**
+
+
+```{r change the data type}
+library(lubridate)
+storm_data_new$BGN_DATE <- mdy_hms(storm_data_new$BGN_DATE)
+```
+
+
+
+**rename the columns to make them more readable**
+
+
+```{r}
+storm_data_new <- storm_data_new %>% 
+    rename(state = STATE, begin_date = BGN_DATE, event_type = EVTYPE,
+           fatalities = FATALITIES, injuries = INJURIES, prop_damage = PROPDMG, 
+           prop_damage_unit = PROPDMGEXP, crop_damage = CROPDMG, 
+           crop_damage_unit = CROPDMGEXP)
+colnames(storm_data_new)
+```
+
+
+**Check NA values**
+
+
+```{r}
+sum(is.na(storm_data_new))
+```
+
+
+```{r}
+head(storm_data_new)
+```
+
+
+
+### 3. Which types of event are the most harmful to population health? 
+
+
+**Fatalities by events**
+
+```{r}
+
+total_fatalities <-  storm_data_new %>% 
+    group_by(event_type) %>% 
+    summarise(total_fatalities = sum(fatalities))
+
+```
+
+
+```{r}
+total_fatalities_ranking <- total_fatalities[
+    order(-total_fatalities$total_fatalities),]
+```
+
+
+
+**The top 10 types of event that have caused the most fatalities**
+
+
+
+```{r}
+total_fatalities_ranking[1:10,]
+```
+
+
+As shown above, tornado is the worst offender causing the most fatalities, followed by excessive heat, flash flood, and heat. 
+
+Now let's also have a look at which states are impacted by tornado related fatalities most. 
+
+
+
+```{r}
+tornado_by_state <- storm_data_new %>% filter (event_type == 'TORNADO') %>% 
+    group_by(state) %>% summarise(total_fatalities = sum (fatalities))
+```
+
+```{r}
+ggplot(tornado_by_state, aes(state, total_fatalities)) + 
+    geom_point(color = 'blue') + theme_bw() +
+    labs(title = 'Total fatalities by state') +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    labs(y = 'Total fatalities') +
+    labs(x = 'State') +
+    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) + 
+    geom_text(aes(label = ifelse(total_fatalities > 300, state, '')), 
+              hjust = 0, vjust = -0.3, color = 'red')
+```
+
+
+
+As shown in the plot above, while for majority of the states, the tornado related fatalities are 0, some states have experienced high fatalities, among which AL has experienced the worst, followed by TX and MS.  This could be the result of a particular severe tornado event, or these states are geographically prone to being affected by tornados. Out of curiosity, Let's have a look at the state AL and how it has been affected by tornado over the duration documented in the dataset. 
+
+
+**Injuries by events**
+
+
+```{r}
+tornado_al <- storm_data_new %>% 
+    filter(event_type == 'TORNADO', state == 'AL') %>% 
+    group_by(begin_date) %>%
+    summarise(total_fatalities = sum(fatalities))
+tornado_al[order(-tornado_al$total_fatalities), ][1:10,]
+
+```
+
+
+The above table shows that Alabama was hit most severely by tornado in 2011, causing 235 total fatalities. 
+
+
+**Top 10 events that have caused the most injuries**
+
+
+```{r}
+total_injuries <- storm_data_new%>%
+    group_by(event_type)%>%
+    summarise(total_injuries = sum(injuries))
+```
+
+
+```{r}
+total_injuries_ranking <- total_injuries[order(-total_injuries$total_injuries),]
+```
+
+```{r}
+total_injuries_ranking[1:10,]
+
+```
+
+```{r}
+tornado_injuries_by_state <- storm_data_new %>% filter (event_type == 'TORNADO') %>% 
+    group_by(state) %>% summarise(total_injuries = sum (injuries))
+
+```
+
+
+```{r}
+tornado_injuries_by_state[order(-tornado_injuries_by_state$total_injuries),][1:5,]
+```
+
+
+
+As shown in the summary table above, tornado is again the worse offender when it comes to causing injuries. Texas is impacted the most by tornado caused injuries, followed by Alabama and Mississippi. 
+
+
+
+### 4. Which types of events have the greatest economic consequences?
+
+For this question, let's look at the prop_damage (property damage) and crop_damage variables. Both variables are measured in k (thousand), m (million), and b (billion). We therefore need to unify the values first before doing any grouping and calculation. 
+
+Let's first change the mixed cases column to all lower cases. 
+
+```{r}
+storm_data_new$prop_damage_unit <- tolower(storm_data_new$prop_damage_unit)
+storm_data_new$crop_damage_unit <- tolower(storm_data_new$crop_damage_unit)
+```
+
+
+Now let's add two new columns showing the prop_damage and crop_damage values all in thousands (k).
+
+
+```{r}
+
+storm_data_new <- storm_data_new %>%
+    mutate(prop_damage_new = 
+               ifelse(prop_damage_unit == 'm', prop_damage * 1000,
+                      ifelse(prop_damage_unit == 'b', prop_damage * 1000000,
+                             ifelse(prop_damage_unit == '', prop_damage/1000, 
+                                    prop_damage))))
+
+```
+
+
+```{r}
+storm_data_new <- storm_data_new %>%
+    mutate(crop_damage_new = 
+               ifelse(crop_damage_unit == 'm', crop_damage * 1000,
+                      ifelse(crop_damage_unit == 'b', crop_damage * 1000000,
+                             ifelse(crop_damage_unit == '', crop_damage/1000, 
+                                    crop_damage))))
+```
+
+
+
+Now let's calculate the property damage values by event_type. 
+
+
+**Types of events that caused the most property damage**
+
+
+```{r}
+
+total_prop_damage <- storm_data_new%>%
+    group_by(event_type)%>%
+    summarise(total_prop_damage = sum(prop_damage_new))
+
+```
+
+```{r}
+total_prop_damage_ranking <- total_prop_damage[order(-total_prop_damage$total_prop_damage),]
+```
+
+
+Let's generate a table summarizing the ten types of event that have caused the most property damage. 
+
+
+```{r}
+total_prop_damage_ranking[1:10,]
+```
+
+As shown above, flood has caused the most property damage, followed by hurricane/typhoon and tornado. 
+
+
+**Types of events that caused most crop damage**
+
+```{r}
+
+total_crop_damage <- storm_data_new%>%
+    group_by(event_type)%>%
+    summarise(total_crop_damage = sum(crop_damage_new))
+
+```
+
+
+Let's find out which 10 types of events that have caused the most crop damage. 
+
+
+```{r}
+total_crop_damage_ranking <- total_crop_damage[order(-total_crop_damage$total_crop_damage),]
+
+total_crop_damage_ranking[1:10,]
+
+```
+
+As shown above, drought has the most impact on crops, followed by flood, river flood, and ice storm. 
+
+### 5. Results 
+
+The above analysis shows the tornado is the most harmful event to public health, causing the most number of fatalities and injuries overall. However, the situation varies by state and by year. Further investigation is needed if the readers are intereted in finding out what particular tornado is the most harmful and its characteristics. 
+
+As far as the economy is concerned, flood and drought are the most harmful, causing the most property damage and crop damage respectively. Further investigation is needed is the readers is interested in finding out how this might vary from state and time. 
+
+
+
