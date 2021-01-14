@@ -1,4 +1,4 @@
-##Project description
+## Project description
 
 This project used data obtained from AWS which includes 4 days' worth of tick data for 100 Scandinavian blue chip stocks. 
 
