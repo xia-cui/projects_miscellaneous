@@ -1,6 +1,6 @@
 ## Project description
 
-Ths project uses the “Individual household electric power consumption Data Set” from the UC Irvine Machine Learning Repository, a popular repository for machine learning datasets. The goal of the project is to  examine how household energy usage varies over a 2-day period in February, 2007 with a series of plots. 
+Ths project uses the “Individual household electric power consumption Data Set” from the UC Irvine Machine Learning Repository, a popular repository for machine learning datasets. The goal of the project is to  examine how household energy usage varies over a 2-day period in February, 2007 with a series of plots. The project folder contains the r codes generating the 4 plots, as well as the plots themselves.
 
 **Dataset**: Electric power consumption: https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2Fhousehold_power_consumption.zip
 
